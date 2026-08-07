@@ -1,6 +1,6 @@
 let modInfo = {
-	name: "The ??? Tree",
-	author: "nobody",
+	name: "Ultimate Prestige Tree",
+	author: "Krembo",
 	pointsName: "points",
 	modFiles: ["layers.js", "tree.js"],
 
@@ -12,16 +12,18 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-	num: "0.0",
-	name: "Literally nothing",
+	num: "0.1 alpha",
+	name: "Prestige, Boosters and Generators!",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
-	<h3>v0.0</h3><br>
-		- Added things.<br>
-		- Added stuff.`
+	<h3>v0.1 alpha</h3><br>
+	- Added Points <br>
+	- Added Prestige Node <br>
+	- Added Boosters Node <br>
+	- Added Generators Node`
 
-let winText = `Congratulations! You have reached the end and beaten this game, but for now...`
+let winText = `You beat the game! Not much to it right now... But there will be more!`
 
 // If you add new functions anywhere inside of a layer, and those functions have an effect when called, add them here.
 // (The ones here are examples, all official functions are already taken care of)
@@ -51,11 +53,12 @@ function addedPlayerData() { return {
 
 // Display extra things at the top of the page
 var displayThings = [
+	`Reach 1e1e16 Points to win!`
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return player.points.gte(new Decimal("e280000000"))
+	return player.points.gte(new Decimal("e10000000000000000"))
 }
 
 
