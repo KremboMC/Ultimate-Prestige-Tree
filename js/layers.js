@@ -1,7 +1,7 @@
 addLayer("p", {
     name: "prestige", // This is optional, only used in a few places, If absent it just uses the layer id.
     symbol: "P", // This appears on the layer's node. Default is the id with the first letter capitalized
-    branches: ["mp", "b"],
+    branches: ["mp", "b", "g"],
     position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
     startData() { return {
         unlocked: true,
@@ -79,7 +79,7 @@ addLayer("mp", {
         unlocked: false,
 		points: new Decimal(0)
     }},
-    color: "#2a35d3",
+    color: "#7a37b9",
     requires: new Decimal(3), // Can be a function that takes requirement increases into account
     resource: "Mega Points", // Name of prestige currency
     baseResource: "prestige points", // Name of resource prestige is based on
@@ -142,13 +142,13 @@ addLayer("b", {
         unlocked: false,
 		points: new Decimal(0)
     }},
-    color: "#7a37b9",
+    color: "#2a35d3",
     requires: new Decimal(20), // Can be a function that takes requirement increases into account
     resource: "Boosters", // Name of prestige currency
     baseResource: "prestige points", // Name of resource prestige is based on
     baseAmount() {return player.p.points}, // Get the current amount of baseResource
     type: "static", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-    exponent: 0.5, // Prestige currency exponent
+    exponent: 1.8, // Prestige currency exponent
     gainMult() { // Calculate the multiplier for main currency from bonuses
         mult = new Decimal(1)
         return mult
@@ -164,4 +164,75 @@ addLayer("b", {
         if (hasUpgrade("p", 13)) return true
         return false
     },
+    effect() {
+        let eff_boosters = new Decimal(1)
+        eff_boosters = eff_boosters.times(2**player.b.points)
+        return eff_boosters
+    },
+    effectDescription() { return "which are multiplying point gain by "+format(tmp[this.layer].effect)+"x" }
+})
+
+addLayer("g", {
+    name: "Generators", // This is optional, only used in a few places, If absent it just uses the layer id.
+    symbol: "G", // This appears on the layer's node. Default is the id with the first letter capitalized
+    position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0),
+        gp: new Decimal(0),
+    }},
+    color: "#3ee03e",
+    requires: new Decimal(20),
+    resource: "Generators", // Name of prestige currency
+    baseResource: "prestige points", // Name of resource prestige is based on
+    baseAmount() {return player.p.points},
+    type: "static",
+    exponent: 3,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 1,
+    hotkeys: [
+        {key: "g", description: "G: Reset for generators", onPress(){if (canReset(this.layer)) doReset(this.layer)}},
+    ],
+    layerShown(){
+        if (hasUpgrade("p", 14)) return true
+        return false
+    },
+    buyables: {
+        11: {
+            title: "Generator 1",
+            cost(x) {return new Decimal(10).pow(2)},
+            display() {
+                return "Generates 10 GP per second. \n" +
+                "Owned:" + formatWhole(player.g.buyables[11]) + "\n" +
+                "Cost:" + format(this.cost()) + " Points"
+            },
+            canAfford() { return player.points.gte(this.cost()) },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.g.buyables[11] = player.g.buyables[11].add(1)
+            }
+        }
+    },
+    update(diff) {
+        if(getBuyableAmount(this.layer, 11).gt(0)) {
+            let gpProduced = getBuyableAmount('g', 11).mul(1).mul(diff)
+            player.g.gp = player.g.gp.add(gpProduced)
+        }
+    },
+    tabFormat: [
+        "main-display",
+        "prestige-button",
+        "blank",
+        ["display-text", function() {
+            return "You have <h2 style= 'color: #3ee03e'>" + format(player.g.gp) + "</h2> GP"
+        }],
+        "blank",
+        "buyables",
+    ]
 })
