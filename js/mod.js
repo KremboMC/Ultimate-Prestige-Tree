@@ -50,6 +50,10 @@ function getPointGen() {
 	if(hasUpgrade("mp", 14)) gain = gain.times(2)
 	if(hasMilestone("p", 0)) gain = gain.times(2)
 	gain = gain.times(tmp.b.effect)
+	if(player.g.unlocked) {
+		gain = gain.times(tmp.g.gpPointMultiplier)
+	}
+	if(hasUpgrade("b", 11)) gain = gain.times(2)
 	return gain
 }
 
