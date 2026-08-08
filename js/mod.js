@@ -12,16 +12,14 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-	num: "0.1 alpha",
-	name: "Prestige, Boosters and Generators!",
+	num: "0.2 alpha",
+	name: "Enhancements And Time!",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
-	<h3>v0.1 alpha</h3><br>
-	- Added Points <br>
-	- Added Prestige Node <br>
-	- Added Boosters Node <br>
-	- Added Generators Node`
+	<h3>v0.2 alpha</h3><br>
+	- Added Enhancements Node <br>
+	- Added Time Node`
 
 let winText = `You beat the game! Not much to it right now... But there will be more!`
 
