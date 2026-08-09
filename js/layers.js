@@ -474,7 +474,7 @@ addLayer("e", {
     baseResource: "Points",
     baseAmount() {return player.points},
     type: "normal",
-    exponent: 0.7,
+    exponent: 0.8,
     gainMult() {
         mult = new Decimal(1)
         return mult
@@ -502,7 +502,7 @@ addLayer("e", {
             cost(x) {
                 let buys = player.e.buyables[11]
                 let exp = new Decimal(0.75)
-                if(hasMilestone("e", 1)) exp = exp.sub(0.05)
+                if(hasMilestone("e", 2)) exp = exp.sub(0.05)
                 if(hasUpgrade("e", 11)) exp = exp.sub(0.05)
                 return new Decimal(100000).pow(buys).pow(exp)
             },
@@ -519,16 +519,21 @@ addLayer("e", {
             canAfford() {
                 return player.points.gte(this.cost())
             },
-            unlocked() { return player.e.points.gte(0)}
+            unlocked() { return hasMilestone("e", 0)}
         },
     },
     milestones: {
         0: {
+            requirementDescription: "1 Enhancement Point",
+            effectDescription: "Unlocks Enhancers",
+            done() {return player.e.points.gte(1)}
+        },
+        1: {
             requirementDescription: "10 Enhancement Points",
             effectDescription: "Doubles Point Gain",
             done() {return player.e.points.gte(10)}
         },
-        1: {
+        2: {
             requirementDescription: "250 Enhancement Points",
             effectDescription: "Enhancements are slightly cheaper",
             done() {return player.e.points.gte(250)}
@@ -537,7 +542,7 @@ addLayer("e", {
     upgrades: {
         11: {
             title: "Even Cheaper Enhancements",
-            description: "Enhancements slightly cheaper",
+            description: "Enhancements are slightly cheaper",
             cost: new Decimal(600)
         }
     },
@@ -570,7 +575,7 @@ addLayer("t" , {
     baseResource: "points",
     baseAmount () { return player.points},
     type: "normal",
-    exponent: 0.6,
+    exponent: 0.5,
     gainMult() {
         mult = new Decimal(1)
         return mult
@@ -602,7 +607,7 @@ addLayer("f" , {
     baseResource: "GP",
     baseAmount () { return player.g.gp},
     type: "normal",
-    exponent: 2,
+    exponent: 0.5,
     gainMult() {
         mult = new Decimal(1)
         return mult
