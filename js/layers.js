@@ -162,7 +162,7 @@ addLayer("b", {
     name: "Boosters", // This is optional, only used in a few places, If absent it just uses the layer id.
     symbol: "B", // This appears on the layer's node. Default is the id with the first letter capitalized
     position: 2, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
-    branches: ["e"],
+    branches: ["e", "t"],
     startData() { return {
         unlocked: false,
 		points: new Decimal(0)
@@ -206,8 +206,13 @@ addLayer("b", {
         },
         12: {
             title: "Second half of Enhancements",
-            description: "Unlocking Enhancements...",
+            description: "Unlocking Enhancements... Also multiplies point gain by 1.5x!",
             cost: new Decimal(5)
+        },
+        13: {
+            title: "Time for Time",
+            description: "Unlock Time and multiply point gain by 2x.",
+            cost: new Decimal(6)
         }
     },
     milestones: {
@@ -223,7 +228,7 @@ addLayer("g", {
     name: "Generators", // This is optional, only used in a few places, If absent it just uses the layer id.
     symbol: "G", // This appears on the layer's node. Default is the id with the first letter capitalized
     position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
-    branches: ["e"],
+    branches: ["e", "f"],
     startData() { return {
         unlocked: false,
         points: new Decimal(0),
@@ -270,6 +275,11 @@ addLayer("g", {
                 return new Decimal(10)
             },
             display() {
+                if(getBuyableAmount("g", 11).gt(0)) {
+                    return "Generates 10 GP per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[11]) + "\n" +
+                    "UNLOCKED"
+                }
                 return "Generates 10 GP per second. \n" +
                 "Owned:" + formatWhole(player.g.buyables[11]) + "\n" +
                 "Cost:" + format(this.cost()) + " Points"
@@ -288,10 +298,14 @@ addLayer("g", {
         12: {
             title: "Generator 2",
             cost(x) {
-                let amount = getBuyableAmount(this.layer, this.id)
-                return new Decimal(100).pow(amount).mul(100)
+                return new Decimal(100)
             },
             display() {
+                if(getBuyableAmount("g", 12).gt(0)) {
+                    return "Generates 1 Generator 1 per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[12]) + "\n" +
+                    "UNLOCKED"
+                }
                 return "Generates 1 Generator 1 per second. \n" +
                 "Owned:" + formatWhole(player.g.buyables[12]) + "\n" +
                 "Cost:" + format(this.cost()) + " Points"
@@ -306,16 +320,59 @@ addLayer("g", {
             },
             unlocked() {return getBuyableAmount(this.layer, 11).gt(0)},
             purchaseLimit() {return new Decimal(1)}
+        },
+        13: {
+            title: "Generator 3",
+            cost(x) {
+                return new Decimal("e6")
+            },
+            display() {
+                if(getBuyableAmount("g", 13).gt(0)) {
+                    return "Generates 1 Generator 2 per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[13]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Generator 2 per second. \n" +
+                "Owned:" + formatWhole(player.g.buyables[13]) + "\n" +
+                "Cost:" + format(this.cost()) + " Points"                
+            },
+            canAfford() {
+                let reachedMax3 = getBuyableAmount(this.layer, this.id).gte(1)
+                return player.points.gte(this.cost()) && !reachedMax3
+            },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.g.buyables[13] = player.g.buyables[13].add(1)
+            },
+            unlocked() {
+                return getBuyableAmount(this.layer, 12).gt(0) && hasUpgrade("g", 12)
+            },
+            purchaseLimit() {return new Decimal(1)}
         }
     },
     upgrades: {
         11: {
             title: "First Half of Enhancements",
-            description: "Unlocking Enhancements...",
+            description: "Unlocking Enhancements..." + " Also multiplies point gain by 1.5x!",
             cost: new Decimal(3)
+        },
+        12: {
+            title: "Generator 3",
+            description: "Unlock generator 3",
+            cost: new Decimal(3)
+        },
+        13: {
+            title: "Mass manufacturing",
+            description: "Unlocks Factories",
+            cost: new Decimal(4)
         }
     },
     update(diff) {
+        if(getBuyableAmount(this.layer, 13).gt(0)) {
+            let g2Produced = getBuyableAmount(this.layer, 13).times(1).times(diff)
+            let currentG2 = getBuyableAmount(this.layer, 12)
+            setBuyableAmount(this.layer, 12, currentG2.add(g2Produced))
+        }
         if(getBuyableAmount(this.layer, 12).gt(0)) {
             let g1Produced = getBuyableAmount(this.layer, 12).times(1).times(diff)
             let currentG1 = getBuyableAmount(this.layer, 11)
@@ -337,6 +394,9 @@ addLayer("g", {
     tabFormat: [
         "main-display",
         "prestige-button",
+        ["display-text", function() {
+            return "You have " + format(player.points) + " points"
+        }],
         "blank",
         "milestones",
         "blank",
@@ -353,7 +413,7 @@ addLayer("g", {
 addLayer("e", {
     name: "Enhancers",
     symbol: "E",
-    position: "1",
+    position: 1,
     startData() { return {
         unlocked: false,
         points: new Decimal(0)
@@ -372,12 +432,101 @@ addLayer("e", {
     gainExp() {
         return new Decimal(1)
     },
+    enhancersToPoint() {
+        return getBuyableAmount(this.layer, 11).times(3).pow(1.3).ceil().add(1)
+    },
     row: 2,
     hotkeys: [
         {key: "e", description: "E: Reset for Enhancers", onPress(){if (canReset(this.layer)) doReset(this.layer)}},
     ],
     layerShown() {
         if((hasUpgrade("g", 11) && hasUpgrade("b", 12)) || player.e.unlocked) return true
+        return false
+    },
+    buyables: {
+        11: {
+            title: "Enhancement",
+            cost(x) {
+                let buys = player.e.buyables[11]
+                return new Decimal(100000).pow(buys).pow(0.75)
+            },
+            display() {
+                return "Owned:" + formatWhole(getBuyableAmount(this.layer, this.id)) + "\n"
+                + "Cost:" + format(this.cost()) + " Points \n"
+                + "Multiplying point gain by " + formatWhole(tmp.e.enhancersToPoint) + "x"
+            },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.e.buyables[11] = player.e.buyables[11].add(1)
+            },
+            canAfford() {
+                return player.points.gte(this.cost())
+            },
+            unlocked() { return player.e.points.gte(0)}
+        },
+    },
+})
+
+addLayer("t" , {
+    name: "Time",
+    symbol: "T",
+    position: 2,
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0)
+    }},
+    color: "#063d0f",
+    requires: new Decimal(10000000),
+    resource: "Time Shards",
+    baseResource: "points",
+    baseAmount () { return player.points},
+    type: "normal",
+    exponent: 0.6,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 2,
+    hotkeys: [
+        {key: "t", description: "T: Reset for Time", onPress() {if(canReset(this.layer)) doReset(this.layer)}}
+    ],
+    layerShown() {
+        if(hasUpgrade("b", 13) || player.t.unlocked) return true
+        return false
+    }
+})
+
+addLayer("f" , {
+    name: "Factories",
+    symbol: "F",
+    position: 0,
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0)
+    }},
+    color: "#c45903",
+    requires: new Decimal(100000000),
+    resource: "Factory Energy",
+    baseResource: "GP",
+    baseAmount () { return player.g.gp},
+    type: "normal",
+    exponent: 2,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 2,
+    hotkeys: [
+        {key: "f", description: "F: Reset for Factories", onPress() {if(canReset(this.layer)) doReset(this.layer)}}
+    ],
+    layerShown() {
+        if(hasUpgrade("g", 13) || player.f.unlocked) return true
         return false
     }
 })
