@@ -221,6 +221,10 @@ addLayer("b", {
             effectDescription: "Unlocks new Mega Point upgrades.",
             done() { return player.b.points.gte(2) }
         }
+    },
+    canBuyMax() {
+        if(hasMilestone("t", 0)) return true
+        return false
     }
 })
 
@@ -298,7 +302,7 @@ addLayer("g", {
         12: {
             title: "Generator 2",
             cost(x) {
-                return new Decimal(100)
+                return new Decimal(20000)
             },
             display() {
                 if(getBuyableAmount("g", 12).gt(0)) {
@@ -544,6 +548,15 @@ addLayer("e", {
             title: "Even Cheaper Enhancements",
             description: "Enhancements are slightly cheaper",
             cost: new Decimal(600)
+        },
+        12: {
+            title: "Synergism part II",
+            description: "Enhancement points boost point gain.",
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"},
+            cost: new Decimal(1300),
+            effect() {
+                return player.e.points.add(1).pow(0.2)
+            }
         }
     },
     tabFormat: [
@@ -575,7 +588,10 @@ addLayer("t" , {
     baseResource: "points",
     baseAmount () { return player.points},
     type: "normal",
-    exponent: 0.5,
+    exponent() {
+        if(hasUpgrade("t", 11)) return 0.6
+        return 0.5
+    },
     gainMult() {
         mult = new Decimal(1)
         return mult
@@ -590,6 +606,29 @@ addLayer("t" , {
     layerShown() {
         if(hasUpgrade("b", 13) || player.t.unlocked) return true
         return false
+    },
+    upgrades: {
+        11: {
+            title: "Easier Time",
+            description: "Gain slightly more time shards when resetting.",
+            cost: new Decimal(10)
+        },
+        12: {
+            title: "Timeback synergism",
+            description: "Points boost their own gain",
+            cost: new Decimal(50),
+            effect() {
+                return player.points.add(1).pow(0.05)
+            },
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"}
+        }
+    },
+    milestones: {
+        0: {
+            requirementDescription: "1000 Time Shards",
+            effectDescription: "You can buy multiple boosters at once",
+            done() {return player.t.points.gte(1000)}
+        }
     }
 })
 
