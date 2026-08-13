@@ -59,6 +59,16 @@ addLayer("p", {
             title: "True Prestige Point 3",
             description: "Your third True Prestige Point! Unlocks Generators!",
             cost: new Decimal(150)
+        },
+        15: {
+            title: "True Prestige Point 4",
+            description: "Your fourth  True Prestige Point! Gain 1% of Mega Point gain per second!",
+            cost: new Decimal(1000000)
+        },
+        21: {
+            title: "True Prestige Point 5",
+            description: "Unlock 3 new booster Upgrades.",
+            cost: new Decimal("5e10")
         }
     },
     doReset(resettingLayer){
@@ -155,6 +165,10 @@ addLayer("mp", {
             cost: new Decimal(300),
             unlocked() {return hasMilestone("g", 0)}
         }
+    },
+    passiveGeneration() {
+        if(hasUpgrade("p", 15)) return 0.01
+        return 0
     }
 })
 
@@ -174,8 +188,10 @@ addLayer("b", {
     baseAmount() {return player.points}, // Get the current amount of baseResource
     type: "static", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
     exponent() {
-        if(hasUpgrade("mp", 21)) return 1.9
-        return 2
+        let exp = new Decimal(2)
+        if(hasUpgrade("mp", 21)) exp = exp.sub(0.1)
+        if(hasUpgrade("e", 14)) exp = exp.sub(0.4)
+        return exp
     }, // Prestige currency exponent
     gainMult() { // Calculate the multiplier for main currency from bonuses
         mult = new Decimal(1)
@@ -213,6 +229,24 @@ addLayer("b", {
             title: "Time for Time",
             description: "Unlock Time and multiply point gain by 2x.",
             cost: new Decimal(6)
+        },
+        21: {
+            title: "Completely unrelated",
+            description: "2x GP gain.",
+            cost: new Decimal(12),
+            unlocked() {return hasUpgrade("p", 21)}
+        },
+        22: {
+            title: "Semi-related",
+            description: "Enhancements are slightly cheaper",
+            cost: new Decimal(15),
+            unlocked() {return hasUpgrade("p", 21)}
+        },
+        23: {
+            title: "Something BIG (probably)",
+            description: "Unlocks Booster Liquid.",
+            cost: new Decimal(20),
+            unlocked() {return hasUpgrade("p", 21)}
         }
     },
     milestones: {
@@ -265,7 +299,9 @@ addLayer("g", {
     },
     effect() {
         let eff_generators = new Decimal(1)
-        eff_generators = eff_generators.times(2**player.g.points)
+        let geneff = new Decimal(2)
+        if(hasUpgrade("e", 21)) geneff = geneff.add(1)
+        eff_generators = eff_generators.times(geneff**player.g.points)
         return eff_generators
     },
     effectDescription() { return "which are multiplying GP gain by "+format(tmp[this.layer].effect)+"x" },
@@ -451,9 +487,13 @@ addLayer("g", {
         if(getBuyableAmount(this.layer, 11).gt(0)) {
             //REMEMBER TO ADD TO GP PER SECOND DISPLAY ASWELL!!!!
             let gpProduced = new Decimal(10).times(getBuyableAmount(this.layer, 11)).times(diff)
-            if(player.g.points.gte(0)) gpProduced = gpProduced.times(2**player.g.points)
+            let geneff = new Decimal(2)
+            if(hasUpgrade("e", 21)) geneff = geneff.add(1)
+            if(player.g.points.gte(0)) gpProduced = gpProduced.times(geneff**player.g.points)
             if(hasUpgrade("mp", 24)) gpProduced = gpProduced.times(3)
             if(getBuyableAmount("e", 11).gt(0)) gpProduced = gpProduced.times(tmp.e.enhancersToGP)
+            if(hasUpgrade("t", 22)) gpProduced = gpProduced.times(5)
+            if(hasUpgrade("b", 21)) gpProduced = gpProduced.times(2)
             player.g.gp = player.g.gp.add(gpProduced)
         }
     },
@@ -485,11 +525,15 @@ addLayer("g", {
         }],
         ["display-text", function() {
             let gpps = new Decimal(0)
+            let geneffdis = new Decimal(2)
+            if(hasUpgrade("e", 21)) geneffdis = geneffdis.add(1)
             if(getBuyableAmount("g", 11).gt(0)) gpps = gpps.add(10)
             gpps = gpps.times(getBuyableAmount("g", 11))
-            gpps = gpps.times(2**player.g.points)
+            gpps = gpps.times(geneffdis**player.g.points)
             if(hasUpgrade("mp", 24)) gpps = gpps.times(3)
+            if(hasUpgrade("t", 22)) gpps = gpps.times(5)
             if(getBuyableAmount("e", 11).gt(0)) gpps = gpps.times(tmp.e.enhancersToGP)
+            if(hasUpgrade("b", 21)) gpps = gpps.times(2)
             return "You're generating <h2 style = 'color: #3ee03e'>" + format(gpps) + "</h2> GP per second"
         }],
         "blank",
@@ -541,6 +585,7 @@ addLayer("e", {
                 let exp = new Decimal(0.75)
                 if(hasMilestone("e", 2)) exp = exp.sub(0.05)
                 if(hasUpgrade("e", 11)) exp = exp.sub(0.05)
+                if(hasUpgrade("b", 22)) exp = exp.sub(0.1)
                 return new Decimal(100000).pow(buys).pow(exp)
             },
             display() {
@@ -595,6 +640,16 @@ addLayer("e", {
             title: "Generator 5?",
             description: "unlocks Generator 5.",
             cost: new Decimal(10000)
+        },
+        14: {
+            title: "Booster market crash",
+            description: "Boosters are SIGNIFICANTLY cheaper.",
+            cost: new Decimal("5e6")
+        },
+        21: {
+            title: "Absurdly powerful generators",
+            description: "Generators now multiply GP gain by 3x instead of 2x.",
+            cost: new Decimal("5e8")
         }
     },
     tabFormat: [
@@ -674,7 +729,41 @@ addLayer("t" , {
             effect() {
                 return player.t.tc.add(1).pow(0.15)
             },
-            effectDisplay() {return format((upgradeEffect(this.layer, this.id))) + "x"}
+            effectDisplay() {return format((upgradeEffect(this.layer, this.id))) + "x"},
+            currencyDisplayName: "Time Crystal",
+            currencyInternalName: "tc",
+            currencyLayer: "t"
+        },
+        22: {
+            title: "Even More GP",
+            description: "5x GP gain.",
+            cost: new Decimal(5),
+            currencyDisplayName: "Time Crystals",
+            currencyInternalName: "tc",
+            currencyLayer: "t"
+        },
+        23: {
+            title: "A dream",
+            description: "Multiplies point gain by 3x",
+            cost: new Decimal(50),
+            currencyDisplayName: "Time Crystals",
+            currencyInternalName: "tc",
+            currencyLayer: "t"
+        },
+        31: {
+            title: "The small things in life",
+            description: "Multiplies Point gain by 1.1x",
+            cost: new Decimal(5000),
+        },
+        32: {
+            title: "The slightly bigger things in life",
+            description: "Multiplies point gain by 1.3x",
+            cost: new Decimal(20000)
+        },
+        33: {
+            title: "The adequately sized things in life",
+            description: "Multiplies point gain by 1.5x",
+            cost: new Decimal(65000)
         }
     },
     milestones: {
@@ -712,7 +801,7 @@ addLayer("t" , {
                 "resource-display",
                 "blank",
                 "milestones",
-                ["upgrades", [1]]
+                ["upgrades", [1,3]]
             ]
         },
         "Time Lab": {

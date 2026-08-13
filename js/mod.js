@@ -63,6 +63,10 @@ function getPointGen() {
 	if(getBuyableAmount("e", 11).gte(0)) {
 		gain = gain.times(tmp.e.enhancersToPoint)
 	}
+	if(hasUpgrade("t", 31)) gain = gain.times(1.1)
+	if(hasUpgrade("t", 32)) gain = gain.times(1.3)
+	if(hasUpgrade("t", 33)) gain = gain.times(1.5)
+	if(hasUpgrade("t", 23)) gain = gain.times(3)
 	return gain
 }
 
