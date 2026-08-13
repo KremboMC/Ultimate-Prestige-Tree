@@ -380,6 +380,34 @@ addLayer("g", {
                 return getBuyableAmount(this.layer, 13).gt(0) && hasMilestone("g", 1)
             },
             purchaseLimit() {return new Decimal(1)}
+        },
+        22: {
+            title: "Generator 5",
+            cost(x) {
+                return new Decimal("5e12")
+            },
+            display() {
+                if(getBuyableAmount("g", 22).gt(0)) {
+                    return "Generates 1 Generator 4 per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[22]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Generator 4 per second. \n" +
+                "Owned:" + formatWhole(player.g.buyables[22]) + "\n" +
+                "Cost:" + format(this.cost()) + " Points"                
+            },
+            canAfford() {
+                let reachedMax5 = getBuyableAmount(this.layer, this.id).gte(1)
+                return player.points.gte(this.cost()) && !reachedMax5
+            },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.g.buyables[22] = player.g.buyables[22].add(1)
+            },
+            unlocked() {
+                return getBuyableAmount(this.layer, 21).gt(0) && hasUpgrade("e", 13)
+            },
+            purchaseLimit() {return new Decimal(1)}
         }
     },
     upgrades: {
@@ -400,6 +428,11 @@ addLayer("g", {
         }
     },
     update(diff) {
+        if(getBuyableAmount(this.layer, 22).gt(0)) {
+            let g4Produced = getBuyableAmount(this.layer, 22).times(1).times(diff)
+            let currentG4 = getBuyableAmount(this.layer, 21)
+            setBuyableAmount(this.layer, 21, currentG4.add(g4Produced))
+        }
         if(getBuyableAmount(this.layer, 21).gt(0)) {
             let g3Produced = getBuyableAmount(this.layer, 21).times(1).times(diff)
             let currentG3 = getBuyableAmount(this.layer, 13)
@@ -557,6 +590,11 @@ addLayer("e", {
             effect() {
                 return player.e.points.add(1).pow(0.2)
             }
+        },
+        13: {
+            title: "Generator 5?",
+            description: "unlocks Generator 5.",
+            cost: new Decimal(10000)
         }
     },
     tabFormat: [
@@ -580,7 +618,8 @@ addLayer("t" , {
     position: 2,
     startData() { return {
         unlocked: false,
-        points: new Decimal(0)
+        points: new Decimal(0),
+        tc: new Decimal(0)
     }},
     color: "#063d0f",
     requires: new Decimal(10000000),
@@ -593,7 +632,8 @@ addLayer("t" , {
         return 0.5
     },
     gainMult() {
-        mult = new Decimal(1)
+        let mult = new Decimal(1)
+        if(hasUpgrade("t", 21)) mult = mult.times(upgradeEffect("t", 21))
         return mult
     },
     gainExp() {
@@ -621,6 +661,20 @@ addLayer("t" , {
                 return player.points.add(1).pow(0.05)
             },
             effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"}
+        },
+        13: {
+            title: "Time Lab",
+            description: "Unlock the Time Lab inside the Time node.",
+            cost: new Decimal(1000)
+        },
+        21: {
+            title: "Shattered Crystals",
+            description: "Time Crystals boost Time Shard gain.",
+            cost: new Decimal(1),
+            effect() {
+                return player.t.tc.add(1).pow(0.15)
+            },
+            effectDisplay() {return format((upgradeEffect(this.layer, this.id))) + "x"}
         }
     },
     milestones: {
@@ -628,6 +682,56 @@ addLayer("t" , {
             requirementDescription: "1000 Time Shards",
             effectDescription: "You can buy multiple boosters at once",
             done() {return player.t.points.gte(1000)}
+        }
+    },
+    buyables: {
+        11: {
+            title: "Make a Time Crystal",
+            cost(x) {
+                let pur = new Decimal(1500)
+                return pur
+            },
+            display() {
+                return "Cost: " + formatWhole(this.cost()) + " Time Shards"
+            },
+            buy() {
+                player.t.points = player.t.points.sub(this.cost())
+                player.t.tc = player.t.tc.add(1)
+            },
+            canAfford() {
+                return player.t.points.gte(this.cost())
+            },
+
+        }
+    },
+    tabFormat: {
+        "Time Shards": {
+            content: [
+                "main-display",
+                "prestige-button",
+                "resource-display",
+                "blank",
+                "milestones",
+                ["upgrades", [1]]
+            ]
+        },
+        "Time Lab": {
+            content: [
+                ["display-text", function() {
+                    return "You have <h2 style = 'color: #063d0f'>" + formatWhole(player.t.tc) + "</h2> Time Crystals"
+                }],
+                "blank",
+                ["buyables", [1]],
+                ["display-text", function() {
+                    return "You have " + formatWhole(player.t.points) + " Time Shards"
+                }],
+                "blank",
+                ["upgrades", [2]]
+            ],
+            unlocked() {
+                if(hasUpgrade("t", 13)) return true
+                return false
+            }
         }
     }
 })
