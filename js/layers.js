@@ -53,12 +53,12 @@ addLayer("p", {
         13: {
             title: "True Prestige Point 2",
             description: "Your second True Prestige Point! Unlocks Boosters!",
-            cost: new Decimal(20)
+            cost: new Decimal(10)
         },
         14: {
             title: "True Prestige Point 3",
             description: "Your third True Prestige Point! Unlocks Generators!",
-            cost: new Decimal(150)
+            cost: new Decimal(100)
         },
         15: {
             title: "True Prestige Point 4",
@@ -95,7 +95,11 @@ addLayer("mp", {
     baseResource: "prestige points", // Name of resource prestige is based on
     baseAmount() {return player.p.points}, // Get the current amount of baseResource
     type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-    exponent: 0.5, // Prestige currency exponent
+    exponent() {
+        let exp = new Decimal(0.5)
+        if(hasUpgrade("mp", 34)) exp = exp.sub(0.1)
+        return exp
+    }, // Prestige currency exponent
     gainMult() { // Calculate the multiplier for main currency from bonuses
         let mult = new Decimal(1)
         if(hasUpgrade("mp", 13)) mult = mult.times(upgradeEffect("mp", 13))
@@ -164,6 +168,30 @@ addLayer("mp", {
             description: "GP gain multiplied by 3.",
             cost: new Decimal(300),
             unlocked() {return hasMilestone("g", 0)}
+        },
+        31: {
+            title: "Too slow for my ADHD",
+            description: "5x Points.",
+            cost() {return new Decimal("1.5e7")},
+            unlocked() {return hasMilestone("g", 2)}
+        },
+        32: {
+            title: "To the moon!",
+            description: "50x GP. Huge.",
+            cost() {return new Decimal("5e7")},
+            unlocked() {return hasMilestone("g", 2)}
+        },
+        33: {
+            title: "Small dip in revenue",
+            description: "Oh no, the stock market! Anyway, Boosters are slightly cheaper.",
+            cost() {return new Decimal("2e8")},
+            unlocked() {return hasMilestone("b", 1)}
+        },
+        34: {
+            title: "More Mega",
+            description: "Mega Points are slightly easier to get",
+            cost() {return new Decimal("1e9")},
+            unlocked() {return hasMilestone("b", 1)}
         }
     },
     passiveGeneration() {
@@ -190,7 +218,8 @@ addLayer("b", {
     exponent() {
         let exp = new Decimal(2)
         if(hasUpgrade("mp", 21)) exp = exp.sub(0.1)
-        if(hasUpgrade("e", 14)) exp = exp.sub(0.4)
+        if(hasUpgrade("e", 21)) exp = exp.sub(0.4)
+        if(hasUpgrade("mp", 33)) exp = exp.sub(0.1)
         return exp
     }, // Prestige currency exponent
     gainMult() { // Calculate the multiplier for main currency from bonuses
@@ -254,10 +283,15 @@ addLayer("b", {
             requirementDescription: "2 Boosters",
             effectDescription: "Unlocks new Mega Point upgrades.",
             done() { return player.b.points.gte(2) }
+        },
+        1: {
+            requirementDescription: "9 Boosters",
+            effectDescription: "Unlocks another 2 Mega Point Upgrades.",
+            done() {return player.b.points.gte(9)}
         }
     },
     canBuyMax() {
-        if(hasMilestone("t", 0)) return true
+        if(hasMilestone("t", 1)) return true
         return false
     }
 })
@@ -300,13 +334,15 @@ addLayer("g", {
     effect() {
         let eff_generators = new Decimal(1)
         let geneff = new Decimal(2)
-        if(hasUpgrade("e", 21)) geneff = geneff.add(1)
+        if(hasUpgrade("e", 22)) geneff = geneff.add(1)
         eff_generators = eff_generators.times(geneff**player.g.points)
         return eff_generators
     },
     effectDescription() { return "which are multiplying GP gain by "+format(tmp[this.layer].effect)+"x" },
     gpPointMultiplier() {
-        return player.g.gp.root(2).add(1).log(2).divideBy(5).add(1)
+        let divider = new Decimal(5)
+        if(hasUpgrade("f", 12)) divider = divider.sub(2)
+        return player.g.gp.root(2).add(1).log(2).divideBy(divider).add(1)
     },
     buyables: {
         11: {
@@ -444,6 +480,34 @@ addLayer("g", {
                 return getBuyableAmount(this.layer, 21).gt(0) && hasUpgrade("e", 13)
             },
             purchaseLimit() {return new Decimal(1)}
+        },
+        23: {
+            title: "Generator 6",
+            cost(x) {
+                return new Decimal("5e16")
+            },
+            display() {
+                if(getBuyableAmount("g", 23).gt(0)) {
+                    return "Generates 1 Generator 5 per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[23]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Generator 5 per second. \n" +
+                "Owned:" + formatWhole(player.g.buyables[23]) + "\n" +
+                "Cost:" + format(this.cost()) + " Points"                
+            },
+            canAfford() {
+                let reachedMax6 = getBuyableAmount(this.layer, this.id).gte(1)
+                return player.points.gte(this.cost()) && !reachedMax6
+            },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.g.buyables[23] = player.g.buyables[23].add(1)
+            },
+            unlocked() {
+                return getBuyableAmount(this.layer, 22).gt(0) && hasMilestone("f", 1)
+            },
+            purchaseLimit() {return new Decimal(1)}
         }
     },
     upgrades: {
@@ -464,6 +528,11 @@ addLayer("g", {
         }
     },
     update(diff) {
+        if(getBuyableAmount(this.layer, 23).gt(0)) {
+            let g5Produced = getBuyableAmount(this.layer, 23).times(1).times(diff)
+            let currentG5 = getBuyableAmount(this.layer, 22)
+            setBuyableAmount(this.layer, 22, currentG5.add(g5Produced))
+        }
         if(getBuyableAmount(this.layer, 22).gt(0)) {
             let g4Produced = getBuyableAmount(this.layer, 22).times(1).times(diff)
             let currentG4 = getBuyableAmount(this.layer, 21)
@@ -494,6 +563,9 @@ addLayer("g", {
             if(getBuyableAmount("e", 11).gt(0)) gpProduced = gpProduced.times(tmp.e.enhancersToGP)
             if(hasUpgrade("t", 22)) gpProduced = gpProduced.times(5)
             if(hasUpgrade("b", 21)) gpProduced = gpProduced.times(2)
+            if(player.f.unlocked) gpProduced = gpProduced.times(tmp.f.aptogp)
+            if(hasUpgrade("f", 11)) gpProduced = gpProduced.times(20)
+            if(hasUpgrade("mp", 32)) gpProduced = gpProduced.times(50)
             player.g.gp = player.g.gp.add(gpProduced)
         }
     },
@@ -507,6 +579,11 @@ addLayer("g", {
             requirementDescription: "10,000,000 GP",
             effectDescription: "Unlocks Generator 4",
             done() { return player.g.gp.gte(10000000)}
+        },
+        2: {
+            requirementDescription: "5 Generators",
+            effectDescription: "Unlocks another 2 Mega Point upgrades.",
+            done() {return player.g.points.gte(5)}
         }
     },
     tabFormat: [
@@ -534,11 +611,18 @@ addLayer("g", {
             if(hasUpgrade("t", 22)) gpps = gpps.times(5)
             if(getBuyableAmount("e", 11).gt(0)) gpps = gpps.times(tmp.e.enhancersToGP)
             if(hasUpgrade("b", 21)) gpps = gpps.times(2)
+            if(player.f.unlocked) gpps = gpps.times(tmp.f.aptogp)
+            if(hasUpgrade("f", 11)) gpps = gpps.times(20)
+            if(hasUpgrade("mp", 32)) gpps = gpps.times(50)
             return "You're generating <h2 style = 'color: #3ee03e'>" + format(gpps) + "</h2> GP per second"
         }],
         "blank",
         "buyables",
-    ]
+    ],
+    canBuyMax() {
+        if(hasMilestone("f", 0)) return true
+        return false
+    }
 })
 
 addLayer("e", {
@@ -555,7 +639,12 @@ addLayer("e", {
     baseResource: "Points",
     baseAmount() {return player.points},
     type: "normal",
-    exponent: 0.8,
+    exponent() {
+        let exp = new Decimal(0.8)
+        if(hasMilestone("t", 2)) exp = exp.sub(0.1)
+        if(hasUpgrade("e", 14)) exp = exp.sub(0.1)
+        return exp
+    },
     gainMult() {
         mult = new Decimal(1)
         return mult
@@ -642,14 +731,19 @@ addLayer("e", {
             cost: new Decimal(10000)
         },
         14: {
-            title: "Booster market crash",
-            description: "Boosters are SIGNIFICANTLY cheaper.",
-            cost: new Decimal("5e6")
+            title: "And a little extra",
+            description: "Enhancement Points are slightly easier to get. Doubles point gain.",
+            cost() {return new Decimal("1e6")}
         },
         21: {
+            title: "Booster market crash",
+            description: "Boosters are SIGNIFICANTLY cheaper.",
+            cost: new Decimal("1e7")
+        },
+        22: {
             title: "Absurdly powerful generators",
             description: "Generators now multiply GP gain by 3x instead of 2x.",
-            cost: new Decimal("5e8")
+            cost: new Decimal("5e9")
         }
     },
     tabFormat: [
@@ -719,7 +813,7 @@ addLayer("t" , {
         },
         13: {
             title: "Time Lab",
-            description: "Unlock the Time Lab inside the Time node.",
+            description: "Unlock the Time Lab inside the Time node. Also 2x point gain.",
             cost: new Decimal(1000)
         },
         21: {
@@ -768,9 +862,19 @@ addLayer("t" , {
     },
     milestones: {
         0: {
-            requirementDescription: "1000 Time Shards",
-            effectDescription: "You can buy multiple boosters at once",
-            done() {return player.t.points.gte(1000)}
+            requirementDescription: "1 Time Shard",
+            effectDescription: "Triples point gain.",
+            done() {return player.t.points.gte(1)}
+        },
+        1: {
+            requirementDescription: "500 Time Shards",
+            effectDescription: "You can buy multiple boosters at once.",
+            done() {return player.t.points.gte(500)}
+        },
+        2: {
+            requirementDescription: "5,000 Time Shards",
+            effectDescription: "Enhancement Points are slightly easier to get.",
+            done() {return player.t.points.gte(5000)}
         }
     },
     buyables: {
@@ -831,7 +935,8 @@ addLayer("f" , {
     position: 0,
     startData() { return {
         unlocked: false,
-        points: new Decimal(0)
+        points: new Decimal(0),
+        ap: new Decimal(0)
     }},
     color: "#c45903",
     requires: new Decimal(100000000),
@@ -839,7 +944,7 @@ addLayer("f" , {
     baseResource: "GP",
     baseAmount () { return player.g.gp},
     type: "normal",
-    exponent: 0.5,
+    exponent: 0.3,
     gainMult() {
         mult = new Decimal(1)
         return mult
@@ -854,5 +959,149 @@ addLayer("f" , {
     layerShown() {
         if(hasUpgrade("g", 13) || player.f.unlocked) return true
         return false
+    },
+    buyables: {
+        11: {
+            title: "Arc Generator 1",
+            cost(x) {return new Decimal(1)},
+            display() {
+                if(getBuyableAmount("f", 11).gt(0)) {
+                    return "Generates 10 Arc Power per second. \n" +
+                    "Owned:" + formatWhole(player.f.buyables[11]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 10 Arc Power per second. \n" +
+                "Owned:" + formatWhole(player.f.buyables[11]) + "\n" +
+                "Cost:" + format(this.cost()) + " Factory Energy"  
+            },
+            buy() {
+                player.f.points = player.f.points.sub(this.cost())
+                player.f.buyables[11] = player.f.buyables[11].add(1)
+            },
+            canAfford() {
+                let reachedMaxF = getBuyableAmount("f", 11).gte(1)
+                return player.f.points.gte(this.cost()) && !reachedMaxF
+            },
+            unlocked() {
+                return player.f.unlocked
+            }
+        },
+        12: {
+            title: "Arc Generator 2",
+            cost(x) {return new Decimal(5)},
+            display() {
+                if(getBuyableAmount("f", 12).gt(0)) {
+                    return "Generates 1 Arc Generator 1 per second. \n" +
+                    "Owned:" + formatWhole(player.f.buyables[12]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Arc Generator 1 per second. \n" +
+                "Owned:" + formatWhole(player.f.buyables[12]) + "\n" +
+                "Cost:" + format(this.cost()) + " Factory Energy"       
+            },
+            buy() {
+                player.f.points = player.f.points.sub(this.cost())
+                player.f.buyables[12] = player.f.buyables[12].add(1)
+            },
+            canAfford() {
+                let reachedMaxF2 = getBuyableAmount("f", 12).gte(1)
+                return player.f.points.gte(this.cost()) && !reachedMaxF2
+            },
+            unlocked() {
+                return getBuyableAmount("f", 11).gte(1)
+            }
+        },
+        13: {
+            title: "Arc Generator 3",
+            cost(x) {return new Decimal(150)},
+            display() {
+                if(getBuyableAmount("f", 13).gt(0)) {
+                    return "Generates 1 Arc Generator 2 per second. \n" +
+                    "Owned:" + formatWhole(player.f.buyables[13]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Arc Generator 2 per second. \n" +
+                "Owned:" + formatWhole(player.f.buyables[13]) + "\n" +
+                "Cost:" + format(this.cost()) + " Factory Energy"       
+            },
+            buy() {
+                player.f.points = player.f.points.sub(this.cost())
+                player.f.buyables[13] = player.f.buyables[13].add(1)
+            },
+            canAfford() {
+                let reachedMaxF3 = getBuyableAmount("f", 13).gte(1)
+                return player.f.points.gte(this.cost()) && !reachedMaxF3
+            },
+            unlocked() {
+                return getBuyableAmount("f", 12).gte(1)
+            }
+        }
+    },
+    aptogp() {
+        return player.f.ap.root(2).add(1).log(2).divideBy(2).add(1)
+    },
+    tabFormat: [
+        "main-display",
+        "prestige-button",
+        "resource-display",
+        "blank",
+        "milestones",
+        "blank",
+        "upgrades",
+        "blank",
+        ["display-text", function() {
+            return "You have <h2 style = 'color: #c45903'>" + formatWhole(player.f.ap) + "</h2> Arc Power, Which multiplies GP gain by <h2>" + format(tmp.f.aptogp) + "</h2>x."
+        }],
+        ["display-text", function() {
+            let apps = new Decimal(0)
+            if(getBuyableAmount("f", 11).gte(1)) apps = apps.add(getBuyableAmount("f", 11).times(10))
+            return "You are generating <h2 style = 'color: #c45903'>" + format(apps) + "</h2> Arc Power per second."
+        }],
+        "blank",
+        "buyables",
+    ],
+    update(diff) {
+        if(getBuyableAmount("f", 13).gte(1)) {
+            let ag2Produced = new Decimal(1).times(getBuyableAmount("f", 13)).times(diff)
+            player.f.buyables[12] = player.f.buyables[12].add(ag2Produced)
+        }     
+        if(getBuyableAmount("f", 12).gte(1)) {
+            let ag1Produced = new Decimal(1).times(getBuyableAmount("f", 12)).times(diff)
+            player.f.buyables[11] = player.f.buyables[11].add(ag1Produced)
+        }
+        if(getBuyableAmount("f", 11).gte(1)) {
+            let apProduced = new Decimal(10).times(getBuyableAmount("f", 11)).times(diff)
+            player.f.ap = player.f.ap.add(apProduced)
+        }
+        //REMEMBER TO ADD TO DISPLAY
+    },
+    upgrades: {
+        11: {
+            title: "I NEED GP",
+            description: "20x GP gain. You happy now?",
+            cost() {return new Decimal(50)}
+        },
+        12: {
+            title: "I WANT BETTER GP",
+            description: "GP boosts points more.",
+            cost(x) {return new Decimal(250)}
+        },
+        13: {
+            title: "OK I AM HAPPY NOW",
+            description: "Doubles point gain. Hopefully this makes you remain happy.",
+            cost(x) {return new Decimal(500)}
+        }
+    },
+    milestones: {
+        0: {
+            requirementDescription: "10 Factory energy",
+            effectDescription: "Lets you buy multiple generators at once. QoL for the win!",
+            done() {return player.f.points.gte(10)}
+        },
+        1: {
+            requirementDescription: "400 Factory energy",
+            effectDescription: "Unlocks Generator 6",
+            done() {return player.f.points.gte(400)}
+        }
     }
 })

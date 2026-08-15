@@ -67,6 +67,10 @@ function getPointGen() {
 	if(hasUpgrade("t", 32)) gain = gain.times(1.3)
 	if(hasUpgrade("t", 33)) gain = gain.times(1.5)
 	if(hasUpgrade("t", 23)) gain = gain.times(3)
+	if(hasMilestone("t", 0)) gain = gain.times(3)
+	if(hasUpgrade("t", 13)) gain = gain.times(2)
+	if(hasUpgrade("e", 14)) gain = gain.times(2)
+	if(hasUpgrade("mp", 31)) gain = gain.times(5)
 	return gain
 }
 
@@ -76,12 +80,12 @@ function addedPlayerData() { return {
 
 // Display extra things at the top of the page
 var displayThings = [
-	`Reach 1e1e16 Points to win!`
+	`Reach 1e25 Points to win!`
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return player.points.gte(new Decimal("e10000000000000000"))
+	return player.points.gte(new Decimal("e25"))
 }
 
 
