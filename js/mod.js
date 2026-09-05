@@ -12,14 +12,27 @@ let modInfo = {
 
 // Set your version in num and name
 let VERSION = {
-	num: "0.2 alpha",
-	name: "Enhancements And Time!",
+	num: "0.2.3",
+	name: "Preperations...",
 }
 
 let changelog = `<h1>Changelog:</h1><br>
-	<h3>v0.2 alpha</h3><br>
+	<h3>v0.2</h3><br>
 	- Added Enhancements Node <br>
-	- Added Time Node`
+	- Added Time Node<br><br>
+	<h3>v0.2.1</h3><br>
+	-added Factory node<br><br>
+	<h3>v0.2.2</h3><br>
+	-added Technological advancements node<br>
+	-bug fixes and balancing<br>
+	-booster liquid<br><br>
+	<h3>v0.2.3</h3><br>
+	-Added missing upgrades from Te milestone 1<br>
+	-Booster Liquid now has 3 plants and 3 upgrades<br>
+	-Added a new F milestone<br>
+	-Generator 7<br>
+	-Bug fixes and balancing<br><br>
+	`
 
 let winText = `You beat the game! Not much to it right now... But there will be more!`
 
@@ -72,6 +85,11 @@ function getPointGen() {
 	if(hasUpgrade("e", 14)) gain = gain.times(2)
 	if(hasUpgrade("mp", 31)) gain = gain.times(5)
 	if(hasMilestone("te", 0)) gain = gain.times(2)
+	if(hasUpgrade("b", 31)) gain = gain.times(upgradeEffect("b", 31))
+	if(hasUpgrade("t", 53)) gain = gain.times(upgradeEffect("t", 53))
+	if(hasUpgrade("t", 41)) gain = gain.times(upgradeEffect("t", 41))
+	if(hasMilestone("t", 5)) gain = gain.times(10)
+	if(hasUpgrade("t", 43)) gain = gain.times(1000)
 	return gain
 }
 
@@ -81,12 +99,12 @@ function addedPlayerData() { return {
 
 // Display extra things at the top of the page
 var displayThings = [
-	`Reach 1e50 Points to win!`
+	`Reach 1e100 Points to win!`
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return player.points.gte(new Decimal("e50"))
+	return player.points.gte(new Decimal("e100"))
 }
 
 

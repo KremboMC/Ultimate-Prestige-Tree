@@ -13,7 +13,13 @@ addLayer("p", {
     baseResource: "points", // Name of resource prestige is based on
     baseAmount() {return player.points}, // Get the current amount of baseResource
     type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
-    exponent: 0.5, // Prestige currency exponent
+    exponent() {
+        let exp = new Decimal(0.5)
+        let div = new Decimal(5)
+        if(hasUpgrade("b", 32)) div = div.sub(1)
+        if(getBuyableAmount("b", 11).gte(1)) exp = exp.add(getBuyableAmount("b", 11).add(1).log(5).root(2).divideBy(div))
+        return exp
+    },
     gainMult() { // Calculate the multiplier for main currency from bonuses
         let mult = new Decimal(1)
         if(hasMilestone("p", 1)) mult = mult.times(player.points.add(1).pow(0.15))
@@ -112,6 +118,7 @@ addLayer("mp", {
     gainMult() { // Calculate the multiplier for main currency from bonuses
         let mult = new Decimal(1)
         if(hasUpgrade("mp", 13)) mult = mult.times(upgradeEffect("mp", 13))
+        if(hasUpgrade("t", 42)) mult = mult.times(upgradeEffect("t", 42))
         return mult
     },
     gainExp() { // Calculate the exponent on main currency from bonuses
@@ -288,10 +295,55 @@ addLayer("b", {
             unlocked() {return hasUpgrade("p", 21)}
         },
         23: {
-            title: "Something BIG (probably)",
+            title: "Not water.",
             description: "Unlocks Booster Liquid.",
             cost: new Decimal(20),
             unlocked() {return hasUpgrade("p", 21)}
+        },
+        31: {
+            title: "Liquid Investments",
+            description: "Booster Liquid boosts point gain.",
+            cost: new Decimal(1000),
+            currencyDisplayName: "ml of Booster Liquid",
+            currencyInternalName: "bl",
+            currencyLayer: "b",
+            effect() {
+                let exp = new Decimal(0.5)
+                let mult = new Decimal(1)
+                return player.b.bl.times(10).root(2).log(1.055).pow(exp).times(mult)
+            },
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id))+"x"}
+        },
+        32: {
+            title: "Better Plant of Prestige",
+            description: "Plant of Prestige is stronger.",
+            cost: new Decimal(3200),
+            currencyDisplayName: "ml of Booster Liquid",
+            currencyInternalName: "bl",
+            currencyLayer: "b"
+        },
+        33: {
+            title: "Better Plant of Power",
+            description: "Plant of Power is stronger.",
+            cost: new Decimal(10000),
+            currencyDisplayName: "ml of Booster Liquid",
+            currencyInternalName: "bl",
+            currencyLayer: "b"
+        },
+        41: {
+            title: "Booster Liquid Boosted",
+            description: "Doubles Booster liquid gain.",
+            cost: new Decimal(60)
+        },
+        42: {
+            title: "SUPER LIQUID",
+            description: "Booster Liquid gain is multiplied by half of your Boosters.",
+            cost: new Decimal(75)
+        },
+        43: {
+            title: "Plant of Fre(E)",
+            description: "Unlocks the 3rd plant.",
+            cost: new Decimal(82)
         }
     },
     milestones: {
@@ -304,6 +356,66 @@ addLayer("b", {
             requirementDescription: "9 Boosters",
             effectDescription: "Unlocks another 2 Mega Point Upgrades.",
             done() {return player.b.points.gte(9)}
+        }
+    },
+    buyables: {
+        11: {
+            title: "Plant of Prestige",
+            cost(x) {
+                let base = new Decimal(3)
+                return base.pow(getBuyableAmount("b", 11).add(1)).pow(3)
+            },
+            display() {
+                let div = new Decimal(5)
+                if(hasUpgrade("b", 32)) div = div.sub(1)
+                return "Reduces Prestige Point exponent by " + format(getBuyableAmount("b", 11).add(1).log(5).root(2).divideBy(div)) + ".\nCost: " + format(this.cost()) + " ml of Booster Liquid"
+            },
+            canAfford() {
+                return player.b.bl.gte(this.cost())
+            },
+            buy() {
+                player.b.bl = player.b.bl.sub(this.cost())
+                player.b.buyables[11] = player.b.buyables[11].add(1)
+            },
+            unlocked() {return hasUpgrade("b", 23)},
+        },
+        12: {
+            title: "Plant of Power",
+            cost(x) {
+                let base = new Decimal(5)
+                return base.pow(getBuyableAmount("b", 12).add(1)).pow(3.2)
+            },
+            display() {
+                let div = new Decimal(5)
+                if(hasUpgrade("b", 33)) div = div.sub(2)
+                return "Multiplies GP gain by " + format(getBuyableAmount("b", 12).add(1).divideBy(div).add(1)) + "x\nCost: " + format(this.cost()) + " ml of Booster Liquid"
+            },
+            canAfford() {
+                return player.b.bl.gte(this.cost())
+            },
+            buy() {
+                player.b.bl = player.b.bl.sub(this.cost())
+                player.b.buyables[12] = player.b.buyables[12].add(1)
+            },
+            unlocked() {return hasUpgrade("b", 23)},
+        },
+        21: {
+            title: "Plant of fre(E)",
+            cost(x) {
+                let base = new Decimal(15)
+                return base.pow(getBuyableAmount("b", 21).add(1)).pow(1.3)
+            },
+            display() {
+                return "Gives " + format(getBuyableAmount("b", 21).times(2)) + " Free Enhancements.\nCost: " + format(this.cost()) + " ml of Booster Liquid"
+            },
+            canAfford() {
+                return player.b.bl.gte(this.cost())
+            },
+            buy() {
+                player.b.bl = player.b.bl.sub(this.cost())
+                player.b.buyables[21] = player.b.buyables[21].add(1)
+            },
+            unlocked() {return hasUpgrade("b", 43)},
         }
     },
     canBuyMax() {
@@ -326,25 +438,33 @@ addLayer("b", {
                 "blank",
                 "milestones",
                 "blank",
-                ["upgrades", [1,2]],
+                ["upgrades", [1,2,4]],
             ]
         },
         "Booster Liquid": {
             content: [
                 ["display-text", function(){
-                    return "You have <h2 style = 'color: #2a35d3'>" + format(player.b.points) + "</h2> Boosters, which are genrating <h2 style = 'color: #2a35d3'>" + format(player.b.points) + "</h2> ml of Booster Liquid per second." 
+                    let blgain = new Decimal(player.b.points)
+                    if(hasUpgrade("b", 41)) blgain = blgain.times(2)
+                    if(hasUpgrade("b", 42)) blgain = blgain.times(player.b.points.add(1).divideBy(2).sub(0.5).ceil())
+                    return "You have <h2 style = 'color: #2a35d3'>" + format(player.b.points) + "</h2> Boosters, which are generating <h2 style = 'color: #2a35d3'>" + format(blgain) + "</h2> ml of Booster Liquid per second." 
                 }],
                 "blank",
                 ["display-text", function(){
                     return "You have <h2 style = 'color: #2a35d3'>" + formatWhole(player.b.bl) + "</h2> ml of Booster Liquid."
-                }]
+                }],
+                "blank",
+                ["upgrades", [3]],
+                "blank",
+                "buyables"
             ],
             unlocked() {return hasUpgrade("b", 23)}
         }
     },
     update(diff) {
-        let blgain = new Decimal(0).times(1).times(diff)
-        if(hasUpgrade("b", 23)) blgain = player.b.points.divideBy(20)
+        let blgain = new Decimal(player.b.points).times(1).times(diff)
+        if(hasUpgrade("b", 41)) blgain = blgain.times(2)
+        if(hasUpgrade("b", 42)) blgain = blgain.times(player.b.points.add(1).divideBy(2).sub(0.5).ceil())
         player.b.bl = player.b.bl.add(blgain)
     }
     
@@ -567,7 +687,35 @@ addLayer("g", {
                 return getBuyableAmount(this.layer, 22).gt(0) && hasMilestone("f", 1)
             },
             purchaseLimit() {return new Decimal(1)}
-        }
+        },
+        31: {
+            title: "Generator 7",
+            cost(x) {
+                return new Decimal("1e75")
+            },
+            display() {
+                if(getBuyableAmount("g", 31).gt(0)) {
+                    return "Generates 1 Generator 6 per second. \n" +
+                    "Owned:" + formatWhole(player.g.buyables[31]) + "\n" +
+                    "UNLOCKED"
+                }
+                return "Generates 1 Generator 6 per second. \n" +
+                "Owned:" + formatWhole(player.g.buyables[31]) + "\n" +
+                "Cost:" + format(this.cost()) + " Points"                
+            },
+            canAfford() {
+                let reachedMax7 = getBuyableAmount(this.layer, this.id).gte(1)
+                return player.points.gte(this.cost()) && !reachedMax7
+            },
+            buy() {
+                player.points = player.points.sub(this.cost())
+                player.g.buyables[31] = player.g.buyables[31].add(1)
+            },
+            unlocked() {
+                return getBuyableAmount(this.layer, 23).gt(0) && hasMilestone("f", 2)
+            },
+            purchaseLimit() {return new Decimal(1)}
+        },
     },
     upgrades: {
         11: {
@@ -602,10 +750,15 @@ addLayer("g", {
             description: "GP makes generators cheaper.",
             cost: new Decimal(8),
             unlocked() {return hasMilestone("te", 0)},
-            effect() {return player.g.gp.log(10).root().pow(0.5).sub(1)}
+            effect() {return player.g.gp.log(10).root(10).pow(0.5).sub(1)}
         }
     },
     update(diff) {
+        if(getBuyableAmount(this.layer, 31).gt(0)) {
+            let g6Produced = getBuyableAmount(this.layer, 31).times(1).times(diff)
+            let currentG6 = getBuyableAmount(this.layer, 23)
+            setBuyableAmount(this.layer, 23, currentG6.add(g6Produced))
+        }
         if(getBuyableAmount(this.layer, 23).gt(0)) {
             let g5Produced = getBuyableAmount(this.layer, 23).times(1).times(diff)
             let currentG5 = getBuyableAmount(this.layer, 22)
@@ -636,6 +789,8 @@ addLayer("g", {
             //REMEMBER TO ADD TO GP PER SECOND DISPLAY ASWELL!!!!
             let gpProduced = new Decimal(10).times(getBuyableAmount(this.layer, 11)).times(diff)
             let geneff = new Decimal(2)
+            let bldiv = new Decimal(5)
+            if(hasUpgrade("b", 33)) bldiv = bldiv.sub(2)
             if(hasUpgrade("e", 21)) geneff = geneff.add(1)
             if(player.g.points.gte(0)) gpProduced = gpProduced.times(geneff**player.g.points)
             if(hasUpgrade("mp", 24)) gpProduced = gpProduced.times(3)
@@ -646,6 +801,8 @@ addLayer("g", {
             if(hasUpgrade("f", 11)) gpProduced = gpProduced.times(20)
             if(hasUpgrade("mp", 32)) gpProduced = gpProduced.times(50)
             if(hasMilestone("te", 0)) gpProduced = gpProduced.times(2)
+            if(getBuyableAmount("b", 12).gte(1)) gpProduced = gpProduced.times(getBuyableAmount("b", 12).add(1).divideBy(bldiv).add(1))
+            if(hasUpgrade("f", 14)) gpProduced = gpProduced.times(10)
             player.g.gp = player.g.gp.add(gpProduced)
         }
     },
@@ -683,6 +840,8 @@ addLayer("g", {
         ["display-text", function() {
             let gpps = new Decimal(0)
             let geneffdis = new Decimal(2)
+            let bldiv = new Decimal(5)
+            if(hasUpgrade("b", 33)) bldiv = bldiv.sub(2)
             if(hasUpgrade("e", 21)) geneffdis = geneffdis.add(1)
             if(getBuyableAmount("g", 11).gt(0)) gpps = gpps.add(10)
             gpps = gpps.times(getBuyableAmount("g", 11))
@@ -695,6 +854,8 @@ addLayer("g", {
             if(hasUpgrade("f", 11)) gpps = gpps.times(20)
             if(hasUpgrade("mp", 32)) gpps = gpps.times(50)
             if(hasMilestone("te", 0)) gpps = gpps.times(2)
+            if(getBuyableAmount("b", 12).gte(1)) gpps = gpps.times(getBuyableAmount("b", 12).add(1).divideBy(bldiv).add(1))
+            if(hasUpgrade("f", 14)) gpps = gpps.times(10)
             return "You're generating <h2 style = 'color: #3ee03e'>" + format(gpps) + "</h2> GP per second"
         }],
         "blank",
@@ -710,7 +871,7 @@ addLayer("e", {
     name: "Enhancers",
     symbol: "E",
     position: 1,
-    branches: ["te"],
+    branches: ["te", "ge"],
     startData() { return {
         unlocked: false,
         points: new Decimal(0)
@@ -729,6 +890,7 @@ addLayer("e", {
     },
     gainMult() {
         mult = new Decimal(1)
+        if(hasUpgrade("t", 52)) mult = mult.times(upgradeEffect("t", 52))
         return mult
     },
     gainExp() {
@@ -737,12 +899,14 @@ addLayer("e", {
     enhancersToPoint() {
         let extra_en = new Decimal(0)
         if(hasUpgrade("e", 23)) extra_en = extra_en.add(1)
-        return getBuyableAmount(this.layer, 11).add(extra_en).times(3).pow(1.3).ceil().add(1)
+        if(hasUpgrade("b", 43)) extra_en = extra_en.add(getBuyableAmount("b", 21).times(2))
+        return getBuyableAmount(this.layer, 11).add(extra_en).times(3).pow(1.4).ceil().add(1)
     },
     enhancersToGP() {
         let extra_en = new Decimal(0)
         if(hasUpgrade("e", 23)) extra_en = extra_en.add(1)
-        return getBuyableAmount(this.layer, 11).add(extra_en).times(2).pow(1.2).ceil().add(1)
+        if(hasUpgrade("b", 43)) extra_en = extra_en.add(getBuyableAmount("b", 21).times(2))
+        return getBuyableAmount(this.layer, 11).add(extra_en).times(2).pow(1.3).ceil().add(1)
     },
     row: 2,
     hotkeys: [
@@ -766,6 +930,7 @@ addLayer("e", {
             display() {
                 let extra_en = new Decimal(0)
                 if(hasUpgrade("e", 23)) extra_en = extra_en.add(1)
+                if(hasUpgrade("b", 43)) extra_en = extra_en.add(getBuyableAmount("b", 21).times(2))
                 return "Owned:" + formatWhole(getBuyableAmount(this.layer, this.id)) + "+" + formatWhole(extra_en) + "\n"
                 + "Cost:" + format(this.cost()) + " Points \n"
                 + "Multiplying point gain by " + formatWhole(tmp.e.enhancersToPoint) + "x\n"
@@ -796,6 +961,11 @@ addLayer("e", {
             requirementDescription: "250 Enhancement Points",
             effectDescription: "Enhancements are slightly cheaper",
             done() {return player.e.points.gte(250)}
+        },
+        3: {
+            requirementDescription: "1e10 Enhancement Points",
+            effectDescription: "Unlocks Gears node and multiplies point gain by 5x.",
+            done() {return player.e.points.gte("1e10")}
         }
     },
     upgrades: {
@@ -863,7 +1033,7 @@ addLayer("t" , {
     name: "Time",
     symbol: "T",
     position: 2,
-    branches: ["te"],
+    branches: ["te", "tt"],
     startData() { return {
         unlocked: false,
         points: new Decimal(0),
@@ -924,7 +1094,7 @@ addLayer("t" , {
             effect() {
                 return player.t.tc.add(1).pow(0.15)
             },
-            effectDisplay() {return format((upgradeEffect(this.layer, this.id))) + "x"},
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"},
             currencyDisplayName: "Time Crystal",
             currencyInternalName: "tc",
             currencyLayer: "t"
@@ -959,6 +1129,59 @@ addLayer("t" , {
             title: "The adequately sized things in life",
             description: "Multiplies point gain by 1.5x",
             cost: new Decimal(65000)
+        },
+        41: {
+            title: "Shards of infinity",
+            description: "Time Shards boost point generation.",
+            cost: new Decimal("1e35"),
+            unlocked() {return hasMilestone("te", 0)},
+            effect() {return player.t.points.add(1).times(0.01).root(5).root(4).divideBy(3).add(1)},
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"}
+        },
+        42: {
+            title: "Bring me back in time",
+            description: "Time Shards and Time Crystals boost MP gain.",
+            cost: new Decimal("1e40"),
+            unlocked() {return hasMilestone("te", 0)},
+            effect() {return player.t.points.times(player.t.tc).divideBy(100).root(10).add(1)},
+            effectDisplay() {return format(upgradeEffect(this.layer, this.id)) + "x"}
+        },
+        43: {
+            title: "Liquified Time",
+            description: "1000x Point gain. Surprisingly, this doesn't break the game.",
+            cost: new Decimal("1e65"),
+            unlocked() {return hasMilestone("te", 0)}
+        },
+        51: {
+            title: "QoL for the win!",
+            description: "make 100TC per purchase instead of 1!",
+            cost: new Decimal(250),
+            unlocked() {return hasMilestone("te", 0)},
+            currencyDisplayName: "Time Crystals",
+            currencyInternalName: "tc",
+            currencyLayer: "t"
+        },
+        52: {
+            title: "Shining Bright",
+            description: "Time Crystals boost Enhancement point gain.",
+            cost: new Decimal(5000),
+            unlocked() {return hasMilestone("te", 0)},
+            currencyDisplayName: "Time Crystals",
+            currencyInternalName: "tc",
+            currencyLayer: "t",
+            effect() {return player.t.tc.times(0.01).root(2).root(2).divideBy(5).add(1)},
+            effectDisplay() { return format((upgradeEffect(this.layer, this.id))) + "x"}
+        },
+        53: {
+            title: "Fractured Crystals",
+            description: "Time Crystals boost point generation again.",
+            cost: new Decimal(20000),
+            unlocked() {return hasMilestone("te", 0)},
+            currencyDisplayName: "Time Crystals",
+            currencyInternalName: "tc",
+            currencyLayer: "t",
+            effect() {return player.t.tc.add(1).pow(0.25).divideBy(1.2)},
+            effectDisplay() {return format((upgradeEffect(this.layer, this.id))) + "x"}
         }
     },
     milestones: {
@@ -987,6 +1210,11 @@ addLayer("t" , {
             effectDescription: "Unlock auto-boosters",
             done() {return player.t.points.gte(25000)},
             toggles: [["b", "auto"]]
+        },
+        5: {
+            requirementDescription: "1e30 Time Shards",
+            effectDescription: "Unlock Time Travel node and multiply point gain by 10x.",
+            done() {return player.t.points.gte("e30")}
         }
     },
     buyables: {
@@ -994,14 +1222,19 @@ addLayer("t" , {
             title: "Make a Time Crystal",
             cost(x) {
                 let pur = new Decimal(1500)
+                if(hasUpgrade("t", 51)) pur = pur.times(100)
                 return pur
             },
             display() {
-                return "Cost: " + formatWhole(this.cost()) + " Time Shards"
+                let adder = new Decimal(1)
+                if(hasUpgrade("t", 51)) adder = adder.add(99)
+                return "Cost: " + formatWhole(this.cost()) + " Time Shards" + "\nProduces " +format(adder) + " Time Crystals"
             },
             buy() {
+                let adder = new Decimal(1)
+                if(hasUpgrade("t", 51)) adder = adder.add(99)
                 player.t.points = player.t.points.sub(this.cost())
-                player.t.tc = player.t.tc.add(1)
+                player.t.tc = player.t.tc.add(adder)
             },
             canAfford() {
                 return player.t.points.gte(this.cost())
@@ -1017,7 +1250,7 @@ addLayer("t" , {
                 "resource-display",
                 "blank",
                 "milestones",
-                ["upgrades", [1,3]]
+                ["upgrades", [1,3,4]]
             ]
         },
         "Time Lab": {
@@ -1031,7 +1264,7 @@ addLayer("t" , {
                     return "You have " + formatWhole(player.t.points) + " Time Shards"
                 }],
                 "blank",
-                ["upgrades", [2]]
+                ["upgrades", [2,5]]
             ],
             unlocked() {
                 if(hasUpgrade("t", 13)) return true
@@ -1044,6 +1277,7 @@ addLayer("t" , {
 addLayer("f" , {
     name: "Factories",
     symbol: "F",
+    branches: ["ge", "w"],
     position: 0,
     startData() { return {
         unlocked: false,
@@ -1171,6 +1405,8 @@ addLayer("f" , {
             let apps = new Decimal(0)
             if(getBuyableAmount("f", 11).gte(1)) apps = apps.add(getBuyableAmount("f", 11).times(10))
             if(hasMilestone("te", 0)) apps = apps.times(2)
+            if(hasUpgrade("f", 14)) apps = apps.times(10)
+            if(hasMilestone("f", 2)) apps = apps.times(5)
             return "You are generating <h2 style = 'color: #c45903'>" + format(apps) + "</h2> Arc Power per second."
         }],
         "blank",
@@ -1188,6 +1424,8 @@ addLayer("f" , {
         if(getBuyableAmount("f", 11).gte(1)) {
             let apProduced = new Decimal(10).times(getBuyableAmount("f", 11)).times(diff)
             if(hasMilestone("te", 0)) apProduced = apProduced.times(2)
+            if(hasUpgrade("f", 14)) apProduced = apProduced.times(10)
+            if(hasMilestone("f", 2)) apProduced = apProduced.times(5)
             player.f.ap = player.f.ap.add(apProduced)
         }
         //REMEMBER TO ADD TO DISPLAY
@@ -1201,12 +1439,17 @@ addLayer("f" , {
         12: {
             title: "I WANT BETTER GP",
             description: "GP boosts points more.",
-            cost(x) {return new Decimal(250)}
+            cost() {return new Decimal(250)}
         },
         13: {
             title: "OK I AM HAPPY NOW",
             description: "Doubles point gain. Hopefully this makes you remain happy.",
-            cost(x) {return new Decimal(500)}
+            cost() {return new Decimal(500)}
+        },
+        14: {
+            title: "GET ME WORKFORCE",
+            description: "Unlocks Workers node. Multiplies AP and GP gain by 10x!",
+            cost() {return new Decimal(10000)}
         }
     },
     milestones: {
@@ -1219,6 +1462,11 @@ addLayer("f" , {
             requirementDescription: "400 Factory energy",
             effectDescription: "Unlocks Generator 6",
             done() {return player.f.points.gte(400)}
+        },
+        2: {
+            requirementDescription: "1,000,000 Factory energy",
+            effectDescription: "Unlocks Generator 7 and multiply AP gain by 5x.",
+            done() {return player.f.points.gte(1000000)}
         }
     }
 }),
@@ -1253,7 +1501,7 @@ addLayer("te" , {
     milestones: {
         0: {
             requirementDescription: "1 Technological Advancement",
-            effectDescription: "Multiply GP, AP and Point gain by 2x. Also unlocks 3 new Generator, Booster and Time upgrades.",
+            effectDescription: "Multiply GP, AP and Point gain by 2x. Also unlocks 3 new Generator, Booster, Time and Time lab upgrades.",
             done() {return player.te.points.gte(1)}
         },
         1: {
@@ -1267,4 +1515,93 @@ addLayer("te" , {
             done() {return player.te.points.gte(3)}
         }
     }
+}),
+
+addLayer("tt" , {
+    name: "Time Travel",
+    symbol: "Tt",
+    position: 4,
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0)
+    }},
+    color: "#3cff00",
+    requires: new Decimal("e30"),
+    resource: "seconds of pure time",
+    baseResource: "Time Shards",
+    baseAmount () { return player.t.points},
+    type: "normal",
+    exponent: 0.4,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 3,
+    layerShown() {
+        if(hasMilestone("t", 5) || player.tt.unlocked) return true
+        return false
+    },
+}),
+
+addLayer("ge" , {
+    name: "Gears",
+    symbol: "Ge",
+    position: 2,
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0)
+    }},
+    color: "#b2bbb0",
+    requires: new Decimal("e30"),
+    resource: "Gears",
+    baseResource: "Enhancement points",
+    baseAmount () { return player.e.points},
+    type: "static",
+    exponent: 4,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 3,
+    layerShown() {
+        if(hasMilestone("e", 3) || player.ge.unlocked) return true
+        return false
+    },
+    canBuyMax() {return true}
+}),
+
+addLayer("w" , {
+    name: "Workers",
+    symbol: "W",
+    position: 1,
+    startData() { return {
+        unlocked: false,
+        points: new Decimal(0)
+    }},
+    color: "#ecb316",
+    requires: new Decimal("e6"),
+    resource: "Workers",
+    baseResource: "Factory Energy",
+    baseAmount () { return player.f.points},
+    type: "static",
+    exponent: 3,
+    gainMult() {
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() {
+        return new Decimal(1)
+    },
+    row: 3,
+    layerShown() {
+        if(hasUpgrade("f", 14) || player.w.unlocked) return true
+        return false
+    },
+    canBuyMax() {return true}
 })
